@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs the Gutenprint 5.3.5 driver (built for this Mac) for the Canon PIXMA MP540 and adds the print queue.
-# Writes only to /Library/Printers/Gutenprint and /Library/Printers/PPDs. Run with sudo.
+# Writes only to /Library/Printers/Gutenprint and /Library/Printers/PPDs, then creates the queue with lpadmin. Run with sudo.
 set -eu
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -10,7 +10,10 @@ PPD=$PPD_DIR/Canon-PIXMA-MP540-Gutenprint.ppd
 QUEUE=Canon_MP540
 
 [ "$(id -u)" -eq 0 ] || { echo "Run with sudo." >&2; exit 1; }
+[ -d "$HERE/payload/Gutenprint" ] || { echo "No payload/: run ./build.sh first." >&2; exit 1; }
 
+# Start from an empty folder so files from an earlier build do not linger.
+rm -rf "$DEST"
 mkdir -p "$DEST" "$PPD_DIR"
 cp -R "$HERE/payload/Gutenprint/" "$DEST/"
 cp "$HERE/payload/ppd/Canon-PIXMA-MP540-Gutenprint.ppd" "$PPD"
@@ -20,7 +23,6 @@ chown -R root:wheel "$DEST" "$PPD"
 chmod -R go-w "$DEST"
 chmod 755 "$DEST/filter/rastertogutenprint.5.3"
 chmod 644 "$PPD"
-xattr -dr com.apple.quarantine "$DEST" 2>/dev/null || true
 
 URI=$(lpinfo -v 2>/dev/null | awk '/^direct usb:\/\/Canon\/MP540/ {print $2; exit}')
 if [ -z "$URI" ]; then
